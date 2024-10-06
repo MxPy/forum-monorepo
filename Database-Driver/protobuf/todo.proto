@@ -1,0 +1,37 @@
+syntax = "proto3";
+package todo;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message Todo {
+  int32 id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message TodoListResponse {
+  repeated Todo todos = 1;
+}
+
+message TodoRequest {
+  int32 id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message ListOlderThanRequest {  // Nowa wiadomość dla ListOlderThan
+  google.protobuf.Timestamp timestamp = 1;
+}
+
+service TodoService {
+  rpc Create(TodoRequest) returns (Todo) {}
+  rpc Read(TodoRequest) returns (Todo) {}
+  rpc Update(TodoRequest) returns (Todo) {}
+  rpc Delete(TodoRequest) returns (google.protobuf.Empty) {}
+  rpc List(google.protobuf.Empty) returns (TodoListResponse) {}
+  
+  rpc ListOlderThan(ListOlderThanRequest) returns (TodoListResponse) {}  // Nowa metoda ListOlderThan
+}

@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pydantic
+aio-pika
+pydantic-settings
+websockets
+grpcio
+grpcio-tools
+protobuf

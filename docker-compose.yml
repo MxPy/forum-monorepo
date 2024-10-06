@@ -1,0 +1,101 @@
+services:
+  write-api:
+    build:
+      context: ./Write-API
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    develop:
+      watch:
+        - action: sync
+          path: ./Write-API
+          target: /app
+        - action: rebuild
+          path: ./Write-API/req.txt
+    networks:
+      - app_network
+    depends_on:
+            rabbitmq:
+                condition: service_healthy
+    restart: on-failure
+
+  read-api:
+    build:
+      context: ./Read-API
+      dockerfile: Dockerfile
+    ports:
+      - 8001:8000
+    develop:
+      watch:
+        - action: sync
+          path: ./Read-API
+          target: /app
+        - action: rebuild
+          path: ./Read-API/req.txt
+    networks:
+      - app_network
+    depends_on:
+            rabbitmq:
+                condition: service_healthy
+    restart: on-failure
+
+  database-driver:
+    build: 
+      context: ./Database-Driver
+      dockerfile: ./Dockerfile
+    expose:
+      - 50051
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres-db/postgres
+    networks:
+      - app_network
+    depends_on:
+            postgres-db:
+                condition: service_healthy
+    restart: on-failure
+  
+  postgres-db:
+    image: postgres:latest
+    volumes:
+      - ./postgre/data:/var/lib/postgresql/data
+    expose:
+      - 5432
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    restart: always
+    networks:
+      - app_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: "rabbitmq:3.11.8-management-alpine"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    networks:
+      - app_network
+    restart: always
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 30s
+      retries: 3
+
+networks:
+  app_network:
+    driver: bridge
+
+
+
+
+
+  
+
+
+  
