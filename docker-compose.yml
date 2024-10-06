@@ -39,6 +39,24 @@ services:
                 condition: service_healthy
     restart: on-failure
 
+  frontend:
+    build:
+      context: ./Frontend
+      dockerfile: Dockerfile
+    ports:
+      - 3000:3000
+    develop:
+      watch:
+        - action: sync
+          path: ./Frontend
+          target: /app
+    networks:
+      - app_network
+    depends_on:
+            rabbitmq:
+                condition: service_healthy
+    restart: on-failure
+
   database-driver:
     build: 
       context: ./Database-Driver
