@@ -9,6 +9,10 @@ message Todo {
   string title = 2;
   string description = 3;
   google.protobuf.Timestamp created_at = 4;
+  string image_link = 5;
+  string community = 6;
+  int32 vote_count = 7;
+  string author = 8;
 }
 
 message TodoListResponse {
@@ -20,6 +24,10 @@ message TodoRequest {
   string title = 2;
   string description = 3;
   google.protobuf.Timestamp created_at = 4;
+  string image_link = 5;
+  string community = 6;
+  int32 vote_count = 7;
+  string author = 8;
 }
 
 message ListOlderThanRequest {  // Nowa wiadomość dla ListOlderThan
@@ -32,6 +40,5 @@ service TodoService {
   rpc Update(TodoRequest) returns (Todo) {}
   rpc Delete(TodoRequest) returns (google.protobuf.Empty) {}
   rpc List(google.protobuf.Empty) returns (TodoListResponse) {}
-  
   rpc ListOlderThan(ListOlderThanRequest) returns (TodoListResponse) {}  // Nowa metoda ListOlderThan
 }

@@ -14,7 +14,12 @@ import json
 import logging
 import random
 import uuid
-
+from fastapi import FastAPI, Depends, HTTPException, Body
+from pydantic import BaseModel
+from datetime import datetime
+import grpc
+import aio_pika
+from google.protobuf import timestamp_pb2
 from settings import settings  
 from models import example
 from schemas.message import Message
@@ -205,20 +210,36 @@ async def _(message_id: str, state: State):
             detail=f"Message ID {message_id} not found!",
         )
 
+# Pydantic model dla danych wejściowych
+class TodoCreate(BaseModel):
+    title: str
+    description: str
+    image_link: str
+    community: str
+    author: str
+
 @app.post("/posts")
-async def create_todo(title: str, description: str, channel: aio_pika.abc.AbstractChannel = Depends(get_channel),):
+async def create_todo(
+    todo_data: TodoCreate = Body(...),
+    channel: aio_pika.abc.AbstractChannel = Depends(get_channel),
+):
     # Create a timestamp for the current time
     current_time = datetime.utcnow()
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(current_time)
-    
+   
     # Create a new Todo using the gRPC stub
     try:
         response = stub.Create(TodoRequest(
-            title=title,
-            description=description,
-            created_at=timestamp
+            title=todo_data.title,
+            description=todo_data.description,
+            created_at=timestamp,
+            image_link=todo_data.image_link,
+            community=todo_data.community,
+            vote_count=0,  # Initialize vote count to 0
+            author=todo_data.author
         ))
+        
         # Convert the gRPC response message to JSON and return it
         msg = await publish_message(channel=channel, message=str(current_time))
         MSG_LOG[msg.message_id] = dict(
@@ -226,21 +247,26 @@ async def create_todo(title: str, description: str, channel: aio_pika.abc.Abstra
             state=State.PUBLISHED,
             published_at=datetime.utcnow(),
         )
-
+        
         return {
             "status": "OK",
             "details": {
-                "body": str(current_time),
+                "body": {
+                    "id": response.id,
+                    "title": response.title,
+                    "description": response.description,
+                    "created_at": response.created_at.ToDatetime().isoformat(),
+                    "image_link": response.image_link,
+                    "community": response.community,
+                    "vote_count": response.vote_count,
+                    "author": response.author
+                },
                 "event_id": msg.message_id,
             },
         }
     except grpc.RpcError as e:
         # Handle gRPC errors
         raise HTTPException(status_code=500, detail=f"gRPC error: {e.details()}")
-
-
-
-
 
 
 
