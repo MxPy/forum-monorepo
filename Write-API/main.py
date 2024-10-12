@@ -144,7 +144,9 @@ def _():
 
 
 async def publish_message(
-    message: str,
+    type: int,
+    destination: str,
+    body: str,
     channel: aio_pika.abc.AbstractChannel,
 ):
     """Publish a message to the event queue.
@@ -153,7 +155,7 @@ async def publish_message(
     :param channel: The AMQP channel to publish the message to.
     """
     msg = aio_pika.Message(
-        body=Message(body=message).model_dump_json().encode(),
+        body=Message(type=type, destination=destination, body=body).model_dump_json().encode(),
         message_id=str(uuid.uuid4()),
     )
     await channel.default_exchange.publish(
@@ -170,7 +172,9 @@ async def publish_message(
     description="Publish a message to the event queue.",
 )
 async def _(
-    message: str = "Hello world!",
+    type: int = 0,
+    destination: str = "test",
+    body: str = "test",
     channel: aio_pika.abc.AbstractChannel = Depends(get_channel),
 ):
     """Publish the provided message to the event queue.
@@ -179,9 +183,9 @@ async def _(
     :param channel: The AMQP channel to publish the message to
     (provided via `Depends(get_channel)`).
     """
-    msg = await publish_message(channel=channel, message=message)
+    msg = await publish_message(channel=channel, type=type, destination=destination, body=body)
     MSG_LOG[msg.message_id] = dict(
-        message=message,
+        type=type, destination=destination, body=body,
         state=State.PUBLISHED,
         published_at=datetime.now(),
     )
@@ -189,7 +193,7 @@ async def _(
     return {
         "status": "OK",
         "details": {
-            "body": message,
+            "body": destination,
             "event_id": msg.message_id,
         },
     }
@@ -241,7 +245,7 @@ async def create_todo(
         ))
         
         # Convert the gRPC response message to JSON and return it
-        msg = await publish_message(channel=channel, message=str(current_time))
+        msg = await publish_message(channel=channel, type=0, destination="test", body=str(current_time))
         MSG_LOG[msg.message_id] = dict(
             message=str(current_time),
             state=State.PUBLISHED,
