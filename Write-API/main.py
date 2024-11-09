@@ -3,8 +3,15 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from contextlib import asynccontextmanager
+from fastapi import APIRouter, Depends, status
+from fastapi.background import BackgroundTasks
+from fastapi.responses import FileResponse
+from files.schemas import FileDownload, FileUpload
+from files.services import download_file, upload_file
+from files.utils import remove_file
 from datetime import datetime
 from typing import AsyncGenerator
+from fastapi import UploadFile
 import uvicorn
 import aio_pika
 import logging
@@ -14,7 +21,13 @@ import json
 import logging
 import random
 import uuid
-
+from files.utils import form_body
+from fastapi import FastAPI, Depends, HTTPException, Body
+from pydantic import BaseModel
+from datetime import datetime
+import grpc
+import aio_pika
+from google.protobuf import timestamp_pb2
 from settings import settings  
 from models import example
 from schemas.message import Message
@@ -139,7 +152,9 @@ def _():
 
 
 async def publish_message(
-    message: str,
+    type: int,
+    destination: str,
+    body: str,
     channel: aio_pika.abc.AbstractChannel,
 ):
     """Publish a message to the event queue.
@@ -148,7 +163,7 @@ async def publish_message(
     :param channel: The AMQP channel to publish the message to.
     """
     msg = aio_pika.Message(
-        body=Message(body=message).model_dump_json().encode(),
+        body=Message(type=type, destination=destination, body=body).model_dump_json().encode(),
         message_id=str(uuid.uuid4()),
     )
     await channel.default_exchange.publish(
@@ -165,7 +180,9 @@ async def publish_message(
     description="Publish a message to the event queue.",
 )
 async def _(
-    message: str = "Hello world!",
+    type: int = 0,
+    destination: str = "test",
+    body: str = "test",
     channel: aio_pika.abc.AbstractChannel = Depends(get_channel),
 ):
     """Publish the provided message to the event queue.
@@ -174,9 +191,9 @@ async def _(
     :param channel: The AMQP channel to publish the message to
     (provided via `Depends(get_channel)`).
     """
-    msg = await publish_message(channel=channel, message=message)
+    msg = await publish_message(channel=channel, type=type, destination=destination, body=body)
     MSG_LOG[msg.message_id] = dict(
-        message=message,
+        type=type, destination=destination, body=body,
         state=State.PUBLISHED,
         published_at=datetime.now(),
     )
@@ -184,7 +201,7 @@ async def _(
     return {
         "status": "OK",
         "details": {
-            "body": message,
+            "body": destination,
             "event_id": msg.message_id,
         },
     }
@@ -205,32 +222,64 @@ async def _(message_id: str, state: State):
             detail=f"Message ID {message_id} not found!",
         )
 
+# Pydantic model dla danych wejściowych
+@form_body
+class TodoCreate(BaseModel):
+    title: str
+    description: str
+    community: str
+    author: str
+    file: UploadFile
+
 @app.post("/posts")
-async def create_todo(title: str, description: str, channel: aio_pika.abc.AbstractChannel = Depends(get_channel),):
+async def create_todo(
+    todo_data: TodoCreate = Depends(),
+    channel: aio_pika.abc.AbstractChannel = Depends(get_channel),
+):
     # Create a timestamp for the current time
     current_time = datetime.utcnow()
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(current_time)
     
+    logger.info("uploooooad")
+    uploaded = await upload_file(
+        user_id=todo_data.author, bucket_name="images", file=todo_data.file
+    )
+    logger.info(uploaded['path'])   
+   
     # Create a new Todo using the gRPC stub
     try:
         response = stub.Create(TodoRequest(
-            title=title,
-            description=description,
-            created_at=timestamp
+            title=todo_data.title,
+            description=todo_data.description,
+            created_at=timestamp,
+            image_link=uploaded['path'],
+            community=todo_data.community,
+            vote_count=0,  # Initialize vote count to 0
+            author=todo_data.author
         ))
+        
         # Convert the gRPC response message to JSON and return it
-        msg = await publish_message(channel=channel, message=str(current_time))
+        msg = await publish_message(channel=channel, type=0, destination="test", body=str(current_time))
         MSG_LOG[msg.message_id] = dict(
             message=str(current_time),
             state=State.PUBLISHED,
             published_at=datetime.utcnow(),
         )
-
+        
         return {
             "status": "OK",
             "details": {
-                "body": str(current_time),
+                "body": {
+                    "id": response.id,
+                    "title": response.title,
+                    "description": response.description,
+                    "created_at": response.created_at.ToDatetime().isoformat(),
+                    "image_link": response.image_link,
+                    "community": response.community,
+                    "vote_count": response.vote_count,
+                    "author": response.author
+                },
                 "event_id": msg.message_id,
             },
         }
@@ -239,8 +288,17 @@ async def create_todo(title: str, description: str, channel: aio_pika.abc.Abstra
         raise HTTPException(status_code=500, detail=f"gRPC error: {e.details()}")
 
 
-
-
+@app.post(
+    "/files",
+    status_code=status.HTTP_201_CREATED,
+    tags=["files"],
+)
+async def file_upload(file: FileUpload = Depends()):
+    logger.info("uploooooad")
+    if uploaded := await upload_file(
+        user_id=file.user_id, bucket_name=file.bucket_name, file=file.file
+    ):
+        return uploaded
 
 
 

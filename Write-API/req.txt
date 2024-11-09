@@ -6,3 +6,5 @@ pydantic-settings
 grpcio
 grpcio-tools
 protobuf
+minio==7.1.14
+python-multipart==0.0.6
