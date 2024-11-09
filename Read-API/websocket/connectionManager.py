@@ -20,3 +20,4 @@ class ConnectionManager:
     async def broadcast(self, room_id: str, message: Any):
         for connection in self.active_connections.get(room_id, []):
             await connection.send_json(message)
+manager = ConnectionManager

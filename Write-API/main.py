@@ -3,8 +3,15 @@ from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import HTTPException
 from contextlib import asynccontextmanager
+from fastapi import APIRouter, Depends, status
+from fastapi.background import BackgroundTasks
+from fastapi.responses import FileResponse
+from files.schemas import FileDownload, FileUpload
+from files.services import download_file, upload_file
+from files.utils import remove_file
 from datetime import datetime
 from typing import AsyncGenerator
+from fastapi import UploadFile
 import uvicorn
 import aio_pika
 import logging
@@ -14,6 +21,7 @@ import json
 import logging
 import random
 import uuid
+from files.utils import form_body
 from fastapi import FastAPI, Depends, HTTPException, Body
 from pydantic import BaseModel
 from datetime import datetime
@@ -215,22 +223,29 @@ async def _(message_id: str, state: State):
         )
 
 # Pydantic model dla danych wejściowych
+@form_body
 class TodoCreate(BaseModel):
     title: str
     description: str
-    image_link: str
     community: str
     author: str
+    file: UploadFile
 
 @app.post("/posts")
 async def create_todo(
-    todo_data: TodoCreate = Body(...),
+    todo_data: TodoCreate = Depends(),
     channel: aio_pika.abc.AbstractChannel = Depends(get_channel),
 ):
     # Create a timestamp for the current time
     current_time = datetime.utcnow()
     timestamp = timestamp_pb2.Timestamp()
     timestamp.FromDatetime(current_time)
+    
+    logger.info("uploooooad")
+    uploaded = await upload_file(
+        user_id=todo_data.author, bucket_name="images", file=todo_data.file
+    )
+    logger.info(uploaded['path'])   
    
     # Create a new Todo using the gRPC stub
     try:
@@ -238,7 +253,7 @@ async def create_todo(
             title=todo_data.title,
             description=todo_data.description,
             created_at=timestamp,
-            image_link=todo_data.image_link,
+            image_link=uploaded['path'],
             community=todo_data.community,
             vote_count=0,  # Initialize vote count to 0
             author=todo_data.author
@@ -271,6 +286,19 @@ async def create_todo(
     except grpc.RpcError as e:
         # Handle gRPC errors
         raise HTTPException(status_code=500, detail=f"gRPC error: {e.details()}")
+
+
+@app.post(
+    "/files",
+    status_code=status.HTTP_201_CREATED,
+    tags=["files"],
+)
+async def file_upload(file: FileUpload = Depends()):
+    logger.info("uploooooad")
+    if uploaded := await upload_file(
+        user_id=file.user_id, bucket_name=file.bucket_name, file=file.file
+    ):
+        return uploaded
 
 
 
