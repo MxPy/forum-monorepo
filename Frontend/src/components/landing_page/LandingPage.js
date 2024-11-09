@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from "react-router-dom";
-import { Card, Button, Form, Input, message, Upload } from 'antd';
+import { Card, Button, Form, Input, message, Upload, Image } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 
 const url = 'ws://localhost:8001/connect';
@@ -98,7 +98,7 @@ const LandingPage = () => {
     return (
         <>
             {contextHolder}
-            <div className='flex flex-col items-center w-screen h-screen overflow-auto'>
+            <div className='flex flex-col items-center overflow-auto'>
                 <ul className='mt-10'>
                     <Card 
                         className="flex justify-center space-y-4 mr-5" 
@@ -108,6 +108,7 @@ const LandingPage = () => {
                             margin: "10px",
                             borderRadius: "20px",
                             overflow: "hidden",
+                            backgroundColor: ""
                         }}
                     >
                         <Form
@@ -179,34 +180,69 @@ const LandingPage = () => {
                     <div key={newestPost}> 
                         {posts.map((post, index) => (
                             <li key={index}>
-                                <Card 
-                                    className="flex space-y-2" 
+                                <Card
+                                    className="flex flex-col space-y-2"
                                     style={{
-                                        width: 630,
+                                        width: 640,
                                         height: 'auto',
                                         margin: "10px",
                                         borderRadius: "20px",
+                                        borderColor: "#0d0221",
                                         overflow: "hidden",
+                                        backgroundColor: "#001529",
+                                        position: "relative"
                                     }}
                                 >
-                                    <h2 className='font-bold text-2xl'>{post.title}</h2>
-                                    <p className='text-gray-600'>Posted by {post.author} in {post.community}</p>
-                                    <p className='overflow-auto'>{post.description}</p>
-                                    {post.imageLink.includes("mp4") ?  (
-                                      <video  controls>
-                                        <source src={post.imageLink}  type="video/mp4"/>
-                                        </video>
-                                    ) : (
-                                      <img 
-                                      src={post.imageLink} 
-                                      alt="Post image" 
-                                      className="mt-2 max-w-full h-auto"
-                                      onError={(e) => {
-                                          console.error('Image loading error:', e);
-                                          e.target.style.display = 'none';
-                                      }}
-                                  />)}
-                                    <p className='text-sm text-gray-500 mt-2'>
+                                    <div className="relative z-10 flex flex-col space-y-2 p-4">
+                                        <h2 className='font-bold text-2xl text-gray-300'>{post.title}</h2>
+                                        <p className='text-gray-600'>Posted by {post.author} in {post.community}</p>
+                                        <p className='overflow-auto text-gray-300'>{post.description}</p>
+                                    </div>
+
+                                    {/* Kontener na media z efektem bluru ograniczonym do tego obszaru */}
+                                    <div className='relative flex justify-center items-center w-full' 
+                                        style={{ minHeight: '300px' }}>
+                                        
+                                        {/* Warstwa z blurem - ograniczona do obszaru media */}
+                                        <div
+                                            className='absolute top-0 left-0 w-full h-full'
+                                            style={{
+                                                backgroundImage: `url(${post.imageLink})`,
+                                                backgroundSize: 'cover',
+                                                backgroundPosition: 'center',
+                                                filter: 'blur(20px)',
+                                                opacity: '0.3',
+                                                transform: 'scale(1.1)',
+                                                zIndex: 0
+                                            }}
+                                        />
+
+                                        {/* Treść media z wyższym z-index */}
+                                        <div className="relative z-10">
+                                            {post.imageLink.includes("mp4") ? (
+                                                <video
+                                                    controls
+                                                    className='max-h-[600px] w-auto object-contain'
+                                                    style={{ maxWidth: '100%' }}
+                                                >
+                                                    <source src={post.imageLink} type="video/mp4"/>
+                                                </video>
+                                            ) : (
+                                                <Image
+                                                    src={post.imageLink}
+                                                    alt="Post image"
+                                                    className="max-h-[600px] w-auto object-contain"
+                                                    style={{ maxWidth: '100%' }}
+                                                    onError={(e) => {
+                                                        console.error('Image loading error:', e);
+                                                        e.target.style.display = 'none';
+                                                    }}
+                                                />
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <p className='text-sm text-gray-500 mt-2 px-4'>
                                         Votes: {post.vote_count}
                                     </p>
                                 </Card>
