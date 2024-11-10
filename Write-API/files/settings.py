@@ -11,8 +11,8 @@ class Settings(BaseSettings):
     MINIO_PORT: int = 9000
     MINIO_SECURE: bool = False
     MINIO_BUCKET_NAME: str = "minio-bucket"
-    ACCESS_KEY: str = "7CKtSumUEu14ERHJc2mb"
-    SECRET_KEY: str = "xdijMg7jqa6331TImWuxdA5zLdX55yQ3zrCu7Jh9"
+    ACCESS_KEY: str = "F3wY3FJGtC66ZvzDaAit"
+    SECRET_KEY: str = "dCDLtbJlERC440Oo2pjg0kITYAsfiJSOEVkH6hBF"
 
 
 

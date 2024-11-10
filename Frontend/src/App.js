@@ -25,7 +25,7 @@ const router = createBrowserRouter([
     element: <Language />,
   },
   {
-    path: "/layout",
+    path: "/cm",
     element: <GlobalLayout />,
   }
 ]);

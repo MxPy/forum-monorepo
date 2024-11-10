@@ -67,6 +67,13 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres-db/postgres
     networks:
       - app_network
+    develop:
+      watch:
+        - action: sync
+          path: ./Database-Driver
+          target: /app
+        - action: rebuild
+          path: ./Database-Driver/req.txt
     depends_on:
             postgres-db:
                 condition: service_healthy

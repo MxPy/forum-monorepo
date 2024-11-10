@@ -10,7 +10,8 @@ from concurrent import futures
 from google.protobuf import empty_pb2, timestamp_pb2
 import os
 from datetime import datetime
-
+import user_pb2
+import user_pb2_grpc
 # SQLAlchemy database URL
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -23,6 +24,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # Create a Base class for declarative models
 Base = declarative_base()
 
+#move it to models
 # Define the Todo model
 class Todo(Base):
     __tablename__ = "todo"
@@ -35,6 +37,15 @@ class Todo(Base):
     community = Column(String)
     vote_count = Column(Integer, default=0)
     author = Column(String)
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, unique=True)
+    nick_name = Column(String)
+    avatar = Column(String)
+
 
 # Create the todo table
 Base.metadata.create_all(bind=engine)
@@ -134,9 +145,82 @@ class TodoServicer(todo_pb2_grpc.TodoServiceServicer):
             vote_count=todo.vote_count,
             author=todo.author
         )
+class UserServicer(user_pb2_grpc.UserServiceServicer):
+    
+    def CreateUser(self, request, context):
+        db = SessionLocal()
+        
+        # Sprawdź czy użytkownik już istnieje
+        existing_user = db.query(User).filter(User.user_id == request.userId).first()
+        if existing_user:
+            context.set_code(grpc.StatusCode.ALREADY_EXISTS)
+            context.set_details("User already exists")
+            db.close()
+            return user_pb2.InfoResponse(info="User already exists")
+            
+        user = User(
+            user_id=request.userId,
+            nick_name=request.nickName,
+            avatar=request.avatar
+        )
+        
+        try:
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+            db.close()
+            return user_pb2.InfoResponse(info=f"User created successfully with ID: {user.user_id}")
+        except Exception as e:
+            db.rollback()
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error creating user: {str(e)}")
+            return user_pb2.InfoResponse(info=f"Error creating user: {str(e)}")
+        finally:
+            db.close()
+
+    def GetUser(self, request, context):
+        db = SessionLocal()
+        user = db.query(User).filter(User.user_id == request.userId).first()
+        
+        if user:
+            response = user_pb2.GetUserResponse(
+                nickName=user.nick_name,
+                avatar=user.avatar
+            )
+            db.close()
+            return response
+        else:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("User not found")
+            db.close()
+            return user_pb2.GetUserResponse()
+
+    def UpdateAvatar(self, request, context):
+        db = SessionLocal()
+        user = db.query(User).filter(User.user_id == request.userId).first()
+        
+        if user:
+            try:
+                user.avatar = request.avatar
+                db.commit()
+                db.refresh(user)
+                db.close()
+                return user_pb2.InfoResponse(info=f"Avatar updated successfully for user: {user.user_id}")
+            except Exception as e:
+                db.rollback()
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details(f"Error updating avatar: {str(e)}")
+                return user_pb2.InfoResponse(info=f"Error updating avatar: {str(e)}")
+        else:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("User not found")
+            db.close()
+            return user_pb2.InfoResponse(info="User not found")
+
 
 # Server setup remains the same
 server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+user_pb2_grpc.add_UserServiceServicer_to_server(UserServicer(), server)
 todo_pb2_grpc.add_TodoServiceServicer_to_server(TodoServicer(), server)
 server.add_insecure_port('[::]:50051')
 server.start()

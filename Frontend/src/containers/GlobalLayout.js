@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { 
   LaptopOutlined, NotificationOutlined, UserOutlined, 
-  MessageOutlined, BellOutlined, CaretDownOutlined, 
+  MessageOutlined, BellOutlined, CaretDownOutlined, CaretUpOutlined,
   BorderlessTableOutlined, SettingOutlined, LogoutOutlined,
   HomeOutlined, RiseOutlined, FireOutlined, GlobalOutlined
 } from '@ant-design/icons';
+
 import { Breadcrumb, Layout, Menu, theme, Button, Divider, Flex, Radio, Space, Dropdown, Badge, Avatar } from 'antd';
 import LandingPage from '../components/landing_page/LandingPage';
 
@@ -81,7 +82,7 @@ const GlobalLayout = () => {
             <Menu.Item key="explore" icon={<GlobalOutlined style={{ fontSize: '24px' }} />} onClick={handleEditClick}>Explore</Menu.Item>
             <Menu.Item key="new" icon={<FireOutlined style={{ fontSize: '24px' }} />} onClick={handleEditClick}>New</Menu.Item>
             <Menu.Divider style={{ backgroundColor: '#2e2157', height: '2px' }} />
-            <Menu.Item key="communities" icon={<CaretDownOutlined style={{ fontSize: '14px' }} />} onClick={toggleCommunities}>Communities</Menu.Item>
+            <Menu.Item key="communities" icon={isCommunitiesOpen ? <CaretDownOutlined style={{ fontSize: '14px' }} /> : <CaretUpOutlined style={{ fontSize: '14px' }} />} onClick={toggleCommunities}>Communities</Menu.Item>
             {isCommunitiesOpen && communities.map((community, index) => (
               <Menu.Item key={`community-${index}`} style={{ paddingLeft: '24px' }}><Avatar size={30} shape="square" src={community.logo} style={{ marginRight:'5px', display: 'flex', alignItems: 'center', border: '1px solid #a6adb4', cursor: 'pointer' }} />{community.name}</Menu.Item>
             ))}

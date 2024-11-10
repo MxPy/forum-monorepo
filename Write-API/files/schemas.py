@@ -16,4 +16,12 @@ class FileUpload(BaseModel):
     user_id: str
     bucket_name: str
 
+@form_body
+class UserAvatar(BaseModel):
+    userId: str
+    avatar: UploadFile
 
+@form_body
+class CommunityLogo(BaseModel):
+    communityId: int
+    log: UploadFile

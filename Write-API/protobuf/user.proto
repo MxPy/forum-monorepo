@@ -1,0 +1,38 @@
+syntax = "proto3";
+package user;
+import "google/protobuf/timestamp.proto";
+
+message CreateUserRequest {
+    string userId = 1;
+    string nickName = 2;
+    string avatar = 3;
+    google.protobuf.Timestamp created_at = 4;
+}
+
+message GetUserRequest {
+    string userId = 1;
+}
+
+message GetUserResponse {
+    //TODO 
+
+    //this is mock
+    string nickName = 1;
+    string avatar = 2;
+    google.protobuf.Timestamp created_at = 3;
+}
+
+message UpdateAvatarRequest {
+    string userId = 1;
+    string avatar = 2;
+}
+
+message InfoResponse {
+    string info = 1;
+}
+
+service UserService {
+    rpc CreateUser(CreateUserRequest) returns (InfoResponse) {}
+    rpc GetUser(GetUserRequest) returns (GetUserResponse) {}
+    rpc UpdateAvatar(UpdateAvatarRequest) returns (InfoResponse) {}
+}

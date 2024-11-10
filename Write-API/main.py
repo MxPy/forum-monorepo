@@ -32,12 +32,14 @@ from settings import settings
 from models import example
 from schemas.message import Message
 from enums.state import State
-
+from grpc import StatusCode, RpcError
 from google.protobuf.json_format import MessageToJson
 import grpc
 from todo_pb2_grpc import TodoServiceStub
 from todo_pb2 import TodoRequest, TodoListResponse
 from google.protobuf import timestamp_pb2
+from routes import user
+from gRPC_errors import GRPC_TO_HTTP_STATUS
 
 ch = logging.StreamHandler(sys.stdout)
 logging.basicConfig(
@@ -300,8 +302,22 @@ async def file_upload(file: FileUpload = Depends()):
     ):
         return uploaded
 
-
-
+app.include_router(user.router)
+# Opcjonalnie możesz dodać middleware do globalnej obsługi błędów
+@app.middleware("http")
+async def grpc_error_handler(request, call_next):
+    try:
+        return await call_next(request)
+    except RpcError as e:
+        status_code = e.code()
+        http_status = GRPC_TO_HTTP_STATUS.get(
+            status_code,
+            status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        return JSONResponse(
+            status_code=http_status,
+            content={"detail": e.details() or "Internal server error"}
+        )
 
 
 if __name__ == '__main__':
