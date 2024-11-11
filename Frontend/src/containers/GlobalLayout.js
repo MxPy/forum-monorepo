@@ -8,6 +8,7 @@ import {
 
 import { Breadcrumb, Layout, Menu, theme, Button, Divider, Flex, Radio, Space, Dropdown, Badge, Avatar } from 'antd';
 import LandingPage from '../components/landing_page/LandingPage';
+import ProfileEdit from '../components/profile_edit/ProfileEdit';
 
 const { Header, Content, Sider } = Layout;
 
@@ -91,7 +92,8 @@ const GlobalLayout = () => {
         <Layout>
           <Content style={{ overflow: 'auto', background: 'linear-gradient(#2e2157, #540d6e)' }}>
             <div style={{ height: '100%', overflow: 'auto' }}>
-              <LandingPage />
+              {/* <LandingPage /> */}
+              <ProfileEdit/>
             </div>
           </Content>
         </Layout>

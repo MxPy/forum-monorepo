@@ -12,6 +12,16 @@ import os
 from datetime import datetime
 import user_pb2
 import user_pb2_grpc
+import logging
+import sys
+ch = logging.StreamHandler(sys.stdout)
+logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(funcName)s: %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        handlers=[ch]
+    )
+logger = logging.getLogger()
 # SQLAlchemy database URL
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
@@ -45,7 +55,7 @@ class User(Base):
     user_id = Column(String, unique=True)
     nick_name = Column(String)
     avatar = Column(String)
-
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 # Create the todo table
 Base.metadata.create_all(bind=engine)
@@ -161,7 +171,8 @@ class UserServicer(user_pb2_grpc.UserServiceServicer):
         user = User(
             user_id=request.userId,
             nick_name=request.nickName,
-            avatar=request.avatar
+            avatar=request.avatar,
+            created_at=timestamp_to_datetime(request.created_at),
         )
         
         try:
@@ -181,11 +192,11 @@ class UserServicer(user_pb2_grpc.UserServiceServicer):
     def GetUser(self, request, context):
         db = SessionLocal()
         user = db.query(User).filter(User.user_id == request.userId).first()
-        
         if user:
             response = user_pb2.GetUserResponse(
                 nickName=user.nick_name,
-                avatar=user.avatar
+                avatar=user.avatar,
+                created_at=user.created_at
             )
             db.close()
             return response

@@ -10,3 +10,5 @@ GRPC_TO_HTTP_STATUS = {
     StatusCode.PERMISSION_DENIED: status.HTTP_403_FORBIDDEN,
     StatusCode.UNAUTHENTICATED: status.HTTP_401_UNAUTHORIZED
 }
+
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}

@@ -14,7 +14,7 @@ async def upload_file(
         bucket_name=bucket_name,
     )
     client.upload_file(file=file)
-    return {"path":f"http://localhost:9000/{bucket_name}/{file.filename}"}
+    return f"http://localhost:9000/{bucket_name}/{file.filename}"
 
 
 async def download_file(

@@ -19,7 +19,7 @@ class FileUpload(BaseModel):
 @form_body
 class UserAvatar(BaseModel):
     userId: str
-    avatar: UploadFile
+    file: UploadFile
 
 @form_body
 class CommunityLogo(BaseModel):
