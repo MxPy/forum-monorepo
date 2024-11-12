@@ -5,13 +5,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - 8000:8000
-    develop:
-      watch:
-        - action: sync
-          path: ./Write-API
-          target: /app
-        - action: rebuild
-          path: ./Write-API/req.txt
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./Write-API
+    #       target: /app
+    #     - action: rebuild
+    #       path: ./Write-API/req.txt
     networks:
       - app_network
     depends_on:
@@ -25,13 +25,13 @@ services:
       dockerfile: Dockerfile
     ports:
       - 8001:8000
-    develop:
-      watch:
-        - action: sync
-          path: ./Read-API
-          target: /app
-        - action: rebuild
-          path: ./Read-API/req.txt
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./Read-API
+    #       target: /app
+    #     - action: rebuild
+    #       path: ./Read-API/req.txt
     networks:
       - app_network
     depends_on:
@@ -67,13 +67,13 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres-db/postgres
     networks:
       - app_network
-    develop:
-      watch:
-        - action: sync
-          path: ./Database-Driver
-          target: /app
-        - action: rebuild
-          path: ./Database-Driver/req.txt
+    # develop:
+    #   watch:
+    #     - action: sync
+    #       path: ./Database-Driver
+    #       target: /app
+    #     - action: rebuild
+    #       path: ./Database-Driver/req.txt
     depends_on:
             postgres-db:
                 condition: service_healthy

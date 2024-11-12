@@ -21,6 +21,7 @@ stub = UserServiceStub(channel)
 DEFAULT_AVATAR_LINK = "http://localhost:9001/avatars/doman.png"
 logger = logging.getLogger()
 
+
 @router.post('/create', status_code=status.HTTP_201_CREATED)
 async def create_user(request: User) -> Dict[str, str]:
     current_time = datetime.utcnow()
@@ -102,7 +103,6 @@ def handle_grpc_error(e: RpcError, default_message: str) -> HTTPException:
 @router.post('/avatar')
 async def get_user(data: UserAvatar = Depends()) -> Dict[str, str]:
     try:
-        # Sprawdzenie czy użytkownik istnieje
         try:
             user_response = stub.GetUser(
                 GetUserRequest(
@@ -112,9 +112,8 @@ async def get_user(data: UserAvatar = Depends()) -> Dict[str, str]:
         except RpcError as e:
             raise handle_grpc_error(e, f"Error with user ID {data.userId}")
 
-        # Walidacja pliku
         original_extension = data.file.filename.split('.')[-1].lower() if '.' in data.file.filename else ''
-        ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
+        ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png'}
         if not original_extension or original_extension not in ALLOWED_EXTENSIONS:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
