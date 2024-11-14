@@ -14,7 +14,9 @@ import json
 import logging
 import random
 import uuid
-
+from gRPC_errors import GRPC_TO_HTTP_STATUS, ALLOWED_EXTENSIONS
+from grpc import StatusCode, RpcError, insecure_channel
+from routes import user
 from settings import settings  
 from models import example
 from schemas.message import Message
@@ -206,5 +208,22 @@ def read_todos_older_than(timestamp_str: str):
     # Convert the gRPC response message to JSON and return it
     return json.loads(MessageToJson(response))
 
+app.include_router(user.router)
+# Opcjonalnie możesz dodać middleware do globalnej obsługi błędów
+@app.middleware("http")
+async def grpc_error_handler(request, call_next):
+    try:
+        return await call_next(request)
+    except RpcError as e:
+        status_code = e.code()
+        http_status = GRPC_TO_HTTP_STATUS.get(
+            status_code,
+            status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        return JSONResponse(
+            status_code=http_status,
+            content={"detail": e.details() or "Internal server error"}
+        )
+    
 if __name__ == '__main__':
     uvicorn.run("main:app", host="0.0.0.0", port=8000, log_level="info", reload=True)

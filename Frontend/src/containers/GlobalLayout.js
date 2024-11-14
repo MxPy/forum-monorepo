@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   LaptopOutlined, NotificationOutlined, UserOutlined, 
   MessageOutlined, BellOutlined, CaretDownOutlined, CaretUpOutlined,
@@ -30,12 +30,54 @@ const dropdownMenu = (
 
 const GlobalLayout = () => {
   const [isCommunitiesOpen, setIsCommunitiesOpen] = useState(true);
-  
   const toggleCommunities = () => setIsCommunitiesOpen(prev => !prev);
-
   const {
     token: { colorBgContainer, borderRadiusLG },
   } = theme.useToken();
+  const [userInfo, setUserInfo] = useState({
+    userId: '',
+    nickName: '',
+    avatar: '',
+    createdAt: '',
+    isBanned: false,          // Domyślnie false, jeśli nie jest zwrócone
+    banExpirationDate: '',
+    bannedByAdminId: ''       // Pusty string, jeśli nie jest zwrócone
+});
+
+  const request_user_info = async (userId) => {
+    try {
+        const response = await fetch(`http://localhost:8001/forum/users/whoami?userId=${userId}`);
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+        const data = await response.json();
+
+        // Ustawienie informacji o użytkowniku z domyślnymi wartościami dla brakujących pól
+        setUserInfo({
+            userId: data.userId || '',
+            nickName: data.nickName || '',
+            avatar: data.avatar || '',
+            createdAt: data.createdAt || '',
+            isBanned: data.isBanned || false,
+            banExpirationDate: data.banExpirationDate || '',
+            bannedByAdminId: data.bannedByAdminId || ''
+        });
+        console.log(userInfo)
+    } catch (error) {
+        console.error('Error fetching user info:', error);
+    }
+  };
+
+  useEffect(() => {
+    request_user_info("doman4")
+  }, [])
+  
+  useEffect(() => {
+    console.log(userInfo)
+  }, [userInfo])
+  
+  
+
 
   return (
     <Layout style={{ height: '100vh', overflow: 'hidden' }}>
@@ -67,7 +109,7 @@ const GlobalLayout = () => {
               key: 'sub4',
               icon: (
                 <Dropdown theme='dark' overlay={dropdownMenu} trigger={['click']} placement="bottomRight">
-                  <Avatar size={48} shape="square" src="http://localhost:9000/avatars/sdf.jpg" style={{ display: 'flex', alignItems: 'center', border: '3px solid #a6adb4', cursor: 'pointer' }} />
+                  <Avatar size={48} shape="square" src={userInfo.avatar} style={{ display: 'flex', alignItems: 'center', border: '3px solid #a6adb4', cursor: 'pointer' }} />
                 </Dropdown>
               ),
               style: { backgroundColor: 'transparent', display: 'flex', alignItems: 'center', padding: '0 0 0 8px', margin: '0' },
