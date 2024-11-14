@@ -12,7 +12,7 @@ from datetime import datetime
 import json
 import logging
 
-router = APIRouter(prefix='/users', tags=['users'])
+router = APIRouter(prefix='/forum/users', tags=['users'])
 channel = insecure_channel("database-driver:50051")
 stub = UserServiceStub(channel)
 DEFAULT_AVATAR_LINK = "http://localhost:9001/avatars/doman.png"
@@ -34,6 +34,7 @@ async def get_user(userId: str):
                 userId=user_id_str
             )
         )
+        logger.info(MessageToJson(response))
         return json.loads(MessageToJson(response))
     except RpcError as e:
         status_code = e.code()

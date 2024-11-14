@@ -15,10 +15,10 @@ from datetime import datetime
 import json
 import logging
 
-router = APIRouter(prefix='/users', tags=['users'])
+router = APIRouter(prefix='/forum/users', tags=['users'])
 channel = insecure_channel("database-driver:50051")
 stub = UserServiceStub(channel)
-DEFAULT_AVATAR_LINK = "http://localhost:9001/avatars/doman.png"
+DEFAULT_AVATAR_LINK = "http://localhost:9000/avatars/doman.jpg"
 logger = logging.getLogger()
 
 
@@ -33,7 +33,10 @@ async def create_user(request: User) -> Dict[str, str]:
                 userId=request.userId,
                 nickName=request.nickName,
                 avatar=DEFAULT_AVATAR_LINK,
-                created_at=timestamp,
+                createdAt=timestamp,
+                isBanned=False,
+                banExpirationDate=timestamp,
+                bannedByAdminId="",
             )
         )
         return {"details": response.info}
@@ -54,45 +57,6 @@ async def create_user(request: User) -> Dict[str, str]:
             detail=detail or "Unexpected error occurred"
         )
 
-@router.get('/whoami', status_code=status.HTTP_200_OK)
-async def get_user(userId: str):
-    try:
-        # Konwersja userId na int, z obsługą błędu
-        try:
-            user_id_str = str(userId)
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="User ID must be a valid string"
-            )
-
-        response = stub.GetUser(
-            GetUserRequest(
-                userId=user_id_str
-            )
-        )
-        return json.loads(MessageToJson(response))
-    except RpcError as e:
-        status_code = e.code()
-        detail = e.details()
-        
-        # Szczególna obsługa dla przypadku NOT_FOUND
-        if status_code == StatusCode.NOT_FOUND:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User with ID {userId} not found"
-            )
-            
-        # Dla innych błędów używamy ogólnego mapowania
-        http_status = GRPC_TO_HTTP_STATUS.get(
-            status_code,
-            status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
-        
-        raise HTTPException(
-            status_code=http_status,
-            detail=detail or "Error while fetching user data"
-        )
 
 def handle_grpc_error(e: RpcError, default_message: str) -> HTTPException:
     status_code = e.code()

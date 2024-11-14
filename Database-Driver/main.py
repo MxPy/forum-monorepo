@@ -2,7 +2,7 @@ import grpc
 import logging
 import todo_pb2
 import todo_pb2_grpc
-from sqlalchemy import create_engine, Column, Integer, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import time
@@ -48,6 +48,7 @@ class Todo(Base):
     vote_count = Column(Integer, default=0)
     author = Column(String)
 
+# Define the User model
 class User(Base):
     __tablename__ = "users"
 
@@ -56,6 +57,17 @@ class User(Base):
     nick_name = Column(String)
     avatar = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_banned = Column(Boolean, default=False)
+    ban_expiration_date = Column(DateTime)
+    banned_by_admin_id = Column(String, default="")
+
+# Helper functions
+def datetime_to_timestamp(dt):
+    return timestamp_pb2.Timestamp(seconds=int(dt.timestamp()), nanos=dt.microsecond * 1000)
+
+def timestamp_to_datetime(ts):
+    return datetime.fromtimestamp(ts.seconds + ts.nanos / 1e9)
+
 
 # Create the todo table
 Base.metadata.create_all(bind=engine)
@@ -155,24 +167,26 @@ class TodoServicer(todo_pb2_grpc.TodoServiceServicer):
             vote_count=todo.vote_count,
             author=todo.author
         )
+# Define the gRPC service
 class UserServicer(user_pb2_grpc.UserServiceServicer):
-    
     def CreateUser(self, request, context):
         db = SessionLocal()
         
-        # Sprawdź czy użytkownik już istnieje
+        # Check if user already exists
         existing_user = db.query(User).filter(User.user_id == request.userId).first()
         if existing_user:
             context.set_code(grpc.StatusCode.ALREADY_EXISTS)
             context.set_details("User already exists")
             db.close()
             return user_pb2.InfoResponse(info="User already exists")
-            
         user = User(
             user_id=request.userId,
             nick_name=request.nickName,
             avatar=request.avatar,
-            created_at=timestamp_to_datetime(request.created_at),
+            created_at=timestamp_to_datetime(request.createdAt),
+            is_banned=request.isBanned,
+            ban_expiration_date=timestamp_to_datetime(request.banExpirationDate),
+            banned_by_admin_id=request.bannedByAdminId,
         )
         
         try:
@@ -194,9 +208,13 @@ class UserServicer(user_pb2_grpc.UserServiceServicer):
         user = db.query(User).filter(User.user_id == request.userId).first()
         if user:
             response = user_pb2.GetUserResponse(
+                userId=user.user_id,
                 nickName=user.nick_name,
                 avatar=user.avatar,
-                created_at=user.created_at
+                createdAt=datetime_to_timestamp(user.created_at),
+                isBanned=user.is_banned,
+                banExpirationDate=datetime_to_timestamp(user.ban_expiration_date),
+                bannedByAdminId=user.banned_by_admin_id,
             )
             db.close()
             return response
@@ -222,6 +240,32 @@ class UserServicer(user_pb2_grpc.UserServiceServicer):
                 context.set_code(grpc.StatusCode.INTERNAL)
                 context.set_details(f"Error updating avatar: {str(e)}")
                 return user_pb2.InfoResponse(info=f"Error updating avatar: {str(e)}")
+        else:
+            context.set_code(grpc.StatusCode.NOT_FOUND)
+            context.set_details("User not found")
+            db.close()
+            return user_pb2.InfoResponse(info="User not found")
+
+    def BanUnbanPlayer(self, request, context):
+        db = SessionLocal()
+        user = db.query(User).filter(User.user_id == request.userId).first()
+        
+        if user:
+            try:
+                user.is_banned = request.isBanned
+                user.ban_expiration_date = timestamp_to_datetime(request.banExpirationDate)
+                db.commit()
+                db.refresh(user)
+                db.close()
+                if request.isBanned:
+                    return user_pb2.InfoResponse(info=f"User {user.user_id} has been banned until {user.ban_expiration_date}")
+                else:
+                    return user_pb2.InfoResponse(info=f"User {user.user_id} has been unbanned")
+            except Exception as e:
+                db.rollback()
+                context.set_code(grpc.StatusCode.INTERNAL)
+                context.set_details(f"Error banning/unbanning user: {str(e)}")
+                return user_pb2.InfoResponse(info=f"Error banning/unbanning user: {str(e)}")
         else:
             context.set_code(grpc.StatusCode.NOT_FOUND)
             context.set_details("User not found")
